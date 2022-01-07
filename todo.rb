@@ -8,6 +8,27 @@ configure do
   set :session_secret, 'secret'
 end
 
+helpers do
+
+  def todos_count(list)
+    list[:todos].size
+  end
+  # Return number of incompleted todos
+  def todos_remaining_count(list)
+    list[:todos].count do |todo|
+      todo[:completed] == false
+    end
+  end
+
+  def list_complete?(list)
+    todos_count(list) > 0 && todos_remaining_count(list) == 0
+  end
+
+  def list_class(list)
+    "complete" if list_complete?(list)
+  end
+end
+
 before do
   session[:lists] ||= [] # if session list is undefined or falsey, then set it to []
 end
@@ -20,6 +41,11 @@ end
 # GET /lists/new    -> new list form
 # POST /lists       -> create new list
 # GET /lists/1      -> view a single list
+
+# create helper method to figure out how many todos are still incomplete
+# cross off lists that have no remaining unfinished todos and change the style from red dot to crossed of checkbox
+  # add class="complete" attribute if return value of helper function is 0
+
 
 # View list of lists
 get "/lists" do
@@ -139,7 +165,6 @@ post "/lists/:list_id/todos/:todo_id" do
   is_completed = params[:completed] == "true"
   @list[:todos][todo_id][:completed] = is_completed
   session[:success] = "The todo item has been updated."
-
   redirect "/lists/#{@list_id}"
 end
 
