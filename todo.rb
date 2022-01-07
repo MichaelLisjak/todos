@@ -142,3 +142,14 @@ post "/lists/:list_id/todos/:todo_id" do
 
   redirect "/lists/#{@list_id}"
 end
+
+# Complete all todos from a list
+post "/lists/:id/complete_all" do
+  @list_id = params[:id].to_i
+  @list = session[:lists][@list_id]
+  @list[:todos].each do |todo|
+    todo[:completed] = true
+  end
+  session[:success] = "All todos have been completed."
+  redirect "/lists/#{@list_id}"
+end
