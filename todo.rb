@@ -6,6 +6,7 @@ require "tilt/erubis"
 configure do
   enable :sessions
   set :session_secret, 'secret'
+  set :erb, :escape_html => true
 end
 
 helpers do
@@ -47,31 +48,6 @@ before do
   session[:lists] ||= [] # if session list is undefined or falsey, then set it to []
 end
 
-get "/" do
-  redirect "/lists"
-end
-
-# GET /lists        -> view all lists
-# GET /lists/new    -> new list form
-# POST /lists       -> create new list
-# GET /lists/1      -> view a single list
-
-# create helper method to figure out how many todos are still incomplete
-# cross off lists that have no remaining unfinished todos and change the style from red dot to crossed of checkbox
-  # add class="complete" attribute if return value of helper function is 0
-
-
-# View list of lists
-get "/lists" do
-  @lists = session[:lists]
-  erb :lists, layout: :layout
-end
-
-# Render the new list form
-get "/lists/new" do
-  erb :new_list, layout: :layout
-end
-
 # return an error message if the name is invalid. Return nil if name is valid.
 def error_for_list_name(name)
   if !(1..100).cover? name.size
@@ -85,6 +61,30 @@ def error_for_todo(name)
   if !(1..100).cover? name.size
     "Todo name must be between 1 and 100 characters."
   end
+end
+
+# Load the list, redirect to overview if list doesn't exist
+def load_list(index)
+  list = session[:lists][index] if index && session[:lists][index]
+  return list if list
+
+  session[:error] = "The specified list was not found."
+  redirect "/lists"
+end
+
+get "/" do
+  redirect "/lists"
+end
+
+# View list of lists
+get "/lists" do
+  @lists = session[:lists]
+  erb :lists, layout: :layout
+end
+
+# Render the new list form
+get "/lists/new" do
+  erb :new_list, layout: :layout
 end
 
 # Create a new list
@@ -105,14 +105,14 @@ end
 # View a single todo item
 get "/lists/:id" do
   @list_id = params[:id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   erb :list, layout: :layout
 end
 
 # Edit an existing todo list
 get "/lists/:id/edit" do
   id = params[:id].to_i
-  @list = session[:lists][id]
+  @list = load_list(id)
   erb :edit_list, layout: :layout
 end
 
@@ -120,7 +120,7 @@ end
 post "/lists/:id" do
   list_name = params[:list_name].strip
   id = params[:id].to_i
-  @list = session[:lists][id]
+  @list = load_list(id)
 
   error = error_for_list_name(list_name)
   if error
@@ -144,7 +144,7 @@ end
 # Add a todo item to a list
 post "/lists/:list_id/todos" do
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   @text = params[:todo].strip
 
   error = error_for_todo(@text)
@@ -161,7 +161,7 @@ end
 # Delete a todo item from a list
 post "/lists/:list_id/todos/:todo_id/destroy" do
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
 
   todo_id = params[:todo_id].to_i
   @list[:todos].delete_at(todo_id)
@@ -173,7 +173,7 @@ end
 # Complete a todo from the list
 post "/lists/:list_id/todos/:todo_id" do
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
 
   todo_id = params[:todo_id].to_i
   is_completed = params[:completed] == "true"
@@ -185,7 +185,7 @@ end
 # Complete all todos from a list
 post "/lists/:id/complete_all" do
   @list_id = params[:id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   @list[:todos].each do |todo|
     todo[:completed] = true
   end
