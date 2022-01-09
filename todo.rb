@@ -165,9 +165,12 @@ post "/lists/:list_id/todos/:todo_id/destroy" do
 
   todo_id = params[:todo_id].to_i
   @list[:todos].delete_at(todo_id)
-  session[:success] = "The todo item has been successfully deleted."
-
-  redirect "/lists/#{@list_id}"
+  if env["HTTP_X_REQUESTED_WITH"] = "XMLHttpRequest"
+    status 204
+  else
+    session[:success] = "The todo item has been successfully deleted."
+    redirect "/lists/#{@list_id}"
+  end
 end
 
 # Complete a todo from the list
